@@ -50,8 +50,8 @@ flowchart TB
   end
 
   subgraph parseLayer [Structured parse]
-    Intent[intent: search | count | list]
-    Filters[filters: brand category price]
+    Intent["intent: search, count, list"]
+    Filters["filters: brand, category, price"]
     PriceRx[Price regex hints]
   end
 
