@@ -36,51 +36,102 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## End-to-end flow
 
+**Legend:** blue = client · indigo = API · amber = parsing · **gold (thick border) = intent routing** · green = exact catalog · purple = hybrid retrieval · pink = response
+
 ```mermaid
 flowchart TB
-  subgraph client [Browser]
-    UI[Search UI]
+  subgraph S1 ["1. User Search UI"]
+    direction LR
+    UI[Enter query and submit]
   end
 
-  subgraph api [POST /api/search]
-    Parse[Query parser]
-    Count[Catalog count]
-    Hybrid[Hybrid retrieval]
-    Sum[Optional summary]
+  subgraph S2 ["2. POST /api/search"]
+    direction LR
+    API[Search route handler]
   end
 
-  subgraph parseLayer [Structured parse]
-    Intent["intent: search, count, list"]
-    Filters["filters: brand, category, price"]
-    PriceRx[Price regex hints]
+  subgraph S3 ["3. Query understanding — intent routing"]
+    direction TB
+    IntentHeur[Phrase heuristics - how many, list all]
+    Parse[Structured LLM parse - filters and queries]
+    Hints[Price regex hints]
+    Intent["Intent routing - search, count, or list"]
+    IntentHeur --> Intent
+    Parse --> Hints --> Intent
   end
 
-  subgraph catalog [products.json]
-    Match[matchesFilters]
-    Total[totalMatching exact count]
+  subgraph S4 ["4. Parallel execution"]
+    direction TB
+    subgraph S4lanes [" "]
+      direction LR
+      subgraph S4a ["Catalog path"]
+        direction TB
+        Filter[Filter products.json]
+        Total["totalMatching (exact count)"]
+        Filter --> Total
+      end
+      subgraph S4b ["Hybrid RAG path"]
+        direction TB
+        Dense[Chroma semantic]
+        Sparse[BM25 on specs]
+        Fuse[RRF fuse by product id]
+        Rank[Cohere rerank]
+        Items[Top K for grid]
+        Dense --> Fuse
+        Sparse --> Fuse
+        Fuse --> Rank --> Items
+      end
+    end
+    S4Join(("Both paths complete"))
+    Total --> S4Join
+    Items --> S4Join
   end
 
-  subgraph retrieve [Hybrid RAG]
-    Dense[Chroma semantic]
-    Sparse[BM25 specs]
-    RRF[RRF by product id]
-    Rerank[Cohere rerank]
-    TopK[Top K_FINAL products]
+  subgraph S5 ["5. Assemble JSON response"]
+    direction TB
+    Merge[Merge aggregate + products + retrieval]
+    Summary[Optional grounded summary]
+    Merge --> Summary
   end
 
-  UI --> Parse
-  Parse --> parseLayer
-  PriceRx --> Parse
-  Parse --> Count
-  Match --> Total
-  Parse --> Hybrid
-  Total --> Sum
-  Hybrid --> retrieve
-  TopK --> Sum
-  TopK --> UI
-  Total --> UI
-  Sum --> UI
+  subgraph S6 ["6. Search UI update"]
+    direction TB
+    Banner[Count / intent banner]
+    Cards[Product cards]
+    Debug[Debug strip]
+    Banner --> Cards --> Debug
+  end
+
+  UI --> API
+  API --> Parse
+  Intent --> Filter
+  Intent --> Dense
+  Intent --> Sparse
+  S4Join --> Merge
+  Summary --> Banner
+
+  UI --> API --> Parse --> Intent --> S4Join --> Merge --> Summary --> Banner --> Cards --> Debug
+
+  classDef user fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px
+  classDef api fill:#E0E7FF,stroke:#4F46E5,color:#312E81
+  classDef parse fill:#FEF3C7,stroke:#D97706,color:#78350F
+  classDef intent fill:#FDE68A,stroke:#B45309,color:#78350F,stroke-width:3px
+  classDef catalog fill:#D1FAE5,stroke:#059669,color:#064E3B
+  classDef rag fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95
+  classDef out fill:#FCE7F3,stroke:#DB2777,color:#831843
+  classDef join fill:#F3F4F6,stroke:#6B7280,color:#374151
+
+  class UI,Banner,Cards,Debug user
+  class API api
+  class Parse,Hints parse
+  class Intent,IntentHeur intent
+  class Filter,Total catalog
+  class Dense,Sparse,Fuse,Rank,Items rag
+  class Merge,Summary out
+  class S4Join join
 ```
+
+**Placement:** steps **1 → 6** stack top to bottom. Step **4** shows **two parallel lanes** (green catalog vs purple hybrid), rejoining at **Both paths complete** before step **5**.
 
 ### How intents behave
 
