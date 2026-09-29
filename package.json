@@ -1,19 +1,31 @@
 {
-  "name": "webapp",
+  "name": "e-commerce-assistant",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:data": "tsx scripts/generate-products.ts",
+    "ingest": "tsx scripts/ingest.ts",
+    "chroma:server": "chroma run --path ./data/chroma --port 8000"
   },
   "dependencies": {
+    "@langchain/cohere": "^1.1.0",
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.2.13",
+    "@langchain/openai": "^1.6.0",
+    "chromadb": "^3.5.0",
+    "dotenv": "^18.0.4",
+    "langchain": "^1.5.14",
     "next": "16.3.6",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -21,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
