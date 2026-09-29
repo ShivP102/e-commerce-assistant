@@ -110,8 +110,6 @@ flowchart TB
   S4Join --> Merge
   Summary --> Banner
 
-  UI --> API --> Parse --> Intent --> S4Join --> Merge --> Summary --> Banner --> Cards --> Debug
-
   classDef user fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px
   classDef api fill:#E0E7FF,stroke:#4F46E5,color:#312E81
   classDef parse fill:#FEF3C7,stroke:#D97706,color:#78350F
