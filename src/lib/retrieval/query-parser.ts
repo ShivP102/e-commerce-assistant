@@ -7,12 +7,14 @@ import {
   type ParsedQuery,
 } from "@/lib/products/schema";
 import { applyPriceHintsToParsedQuery } from "@/lib/retrieval/price-filter-hints";
+import { detectQueryIntent, mergeQueryIntent } from "@/lib/retrieval/query-intent";
 
 const systemPrompt = `You parse e-commerce product search queries into structured retrieval parts.
 
 Categories (exact spelling): ${CATEGORIES.join(", ")}.
 
 Rules:
+- intent: "count" for how many/total/number of; "list" for list all/show all/every; otherwise "search".
 - semanticQuery: natural language for matching product descriptions (use cases, vibes).
 - keywordQuery: specs, model numbers, sizes, RAM, inches, author names, materials — short keyword-focused string.
 - filters.brand: when user names a brand (e.g. LG, Dell). Use null if none.
@@ -22,15 +24,23 @@ Rules:
 - Example: "laptops above 85000 for work" → priceMin 85000, priceMax null, category Laptop.
 - Set filters to null if no metadata filters apply.`;
 
+function withIntent(userQuery: string, parsed: ParsedQuery): ParsedQuery {
+  return {
+    ...parsed,
+    intent: mergeQueryIntent(userQuery, parsed.intent),
+  };
+}
+
 export async function parseSearchQuery(userQuery: string): Promise<ParsedQuery> {
   if (!config.openAiApiKey) {
     console.warn(
       "[parseSearchQuery] OPENAI_API_KEY is missing; using raw query (no structured filters).",
     );
-    return {
+    return withIntent(userQuery, {
+      intent: detectQueryIntent(userQuery),
       semanticQuery: userQuery,
       keywordQuery: userQuery,
-    };
+    });
   }
 
   const model = new ChatOpenAI({
@@ -49,15 +59,19 @@ export async function parseSearchQuery(userQuery: string): Promise<ParsedQuery> 
       { role: "user", content: userQuery },
     ]);
     const normalized = normalizeStructuredParsedQuery(raw);
-    return applyPriceHintsToParsedQuery(userQuery, normalized);
+    return withIntent(
+      userQuery,
+      applyPriceHintsToParsedQuery(userQuery, normalized),
+    );
   } catch (error) {
     console.error(
       "[parseSearchQuery] Structured parse failed; using raw query.",
       error instanceof Error ? error.message : error,
     );
-    return {
+    return withIntent(userQuery, {
+      intent: detectQueryIntent(userQuery),
       semanticQuery: userQuery,
       keywordQuery: userQuery,
-    };
+    });
   }
 }

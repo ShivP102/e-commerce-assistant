@@ -1,13 +1,18 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import type { ParsedQuery } from "@/lib/products/schema";
+import type { ParsedQuery, QueryIntent } from "@/lib/products/schema";
 import { ProductCard, type ProductHit } from "@/components/ProductCard";
 import { SearchDebugStrip } from "@/components/SearchDebugStrip";
 
 type SearchResponse = {
   products: ProductHit[];
   parsed: ParsedQuery;
+  aggregate?: {
+    intent: QueryIntent;
+    totalMatching: number;
+    productsReturned: number;
+  };
   retrieval: {
     denseCount: number;
     sparseCount: number;
@@ -64,9 +69,9 @@ export function SearchPageClient() {
           E-commerce product search
         </h1>
         <p className="max-w-3xl text-zinc-600 dark:text-zinc-400">
-          Semantic search on descriptions (Chroma), BM25 keyword search on specs,
-          metadata filters for brand/category/price, and optional Cohere rerank
-          before grounded summaries.
+          Hybrid retrieval (Chroma + BM25 + rerank) for discovery, plus exact
+          catalog counts for &quot;how many&quot; / list-style questions over{" "}
+          <code className="text-sm">products.json</code>.
         </p>
       </header>
 
@@ -78,7 +83,7 @@ export function SearchPageClient() {
             onChange={(e) => setQuery(e.target.value)}
             rows={3}
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm outline-none ring-emerald-500 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-            placeholder="Try: ceramic vase hand painted under 3000"
+            placeholder="Try: How many laptops are available above 100000 for gifting?"
           />
         </label>
 
@@ -88,7 +93,7 @@ export function SearchPageClient() {
             checked={summarize}
             onChange={(e) => setSummarize(e.target.checked)}
           />
-          Include AI summary (grounded on reranked results)
+          Include AI summary (uses exact catalog count when applicable)
         </label>
 
         <button
@@ -106,17 +111,37 @@ export function SearchPageClient() {
         </p>
       ) : null}
 
+      {data?.aggregate ? (
+        <section className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="font-medium text-zinc-800 dark:text-zinc-100">
+            Catalog match:{" "}
+            <span className="text-emerald-700 dark:text-emerald-400">
+              {data.aggregate.totalMatching}
+            </span>{" "}
+            product(s) · intent:{" "}
+            <span className="font-mono">{data.aggregate.intent}</span> · showing{" "}
+            {data.aggregate.productsReturned} ranked result(s)
+          </p>
+        </section>
+      ) : null}
+
       {data?.summary ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
             AI summary
           </h2>
-          <p className="text-zinc-800 dark:text-zinc-200">{data.summary}</p>
+          <p className="whitespace-pre-line text-zinc-800 dark:text-zinc-200">
+            {data.summary}
+          </p>
         </section>
       ) : null}
 
       {data ? (
-        <SearchDebugStrip parsed={data.parsed} retrieval={data.retrieval} />
+        <SearchDebugStrip
+          parsed={data.parsed}
+          retrieval={data.retrieval}
+          aggregate={data.aggregate}
+        />
       ) : null}
 
       {data?.products?.length ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ParsedQuery } from "@/lib/products/schema";
+import type { ParsedQuery, QueryIntent } from "@/lib/products/schema";
 
 type RetrievalDebug = {
   denseCount: number;
@@ -14,10 +14,19 @@ type RetrievalDebug = {
 type SearchDebugStripProps = {
   parsed?: ParsedQuery;
   retrieval?: RetrievalDebug;
+  aggregate?: {
+    intent: QueryIntent;
+    totalMatching: number;
+    productsReturned: number;
+  };
 };
 
-export function SearchDebugStrip({ parsed, retrieval }: SearchDebugStripProps) {
-  if (!parsed && !retrieval) return null;
+export function SearchDebugStrip({
+  parsed,
+  retrieval,
+  aggregate,
+}: SearchDebugStripProps) {
+  if (!parsed && !retrieval && !aggregate) return null;
 
   return (
     <details className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -25,6 +34,13 @@ export function SearchDebugStrip({ parsed, retrieval }: SearchDebugStripProps) {
         Retrieval debug
       </summary>
       <div className="mt-3 space-y-2 text-zinc-600 dark:text-zinc-400">
+        {aggregate ? (
+          <ul className="list-inside list-disc space-y-1">
+            <li>Intent: {aggregate.intent}</li>
+            <li>Catalog total (filtered): {aggregate.totalMatching}</li>
+            <li>Products returned (ranked): {aggregate.productsReturned}</li>
+          </ul>
+        ) : null}
         {parsed ? (
           <pre className="overflow-x-auto rounded bg-white p-2 text-xs dark:bg-zinc-950">
             {JSON.stringify(parsed, null, 2)}

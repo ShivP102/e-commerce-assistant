@@ -114,14 +114,19 @@ export const parsedQueryFiltersSchema = z.object({
   priceMax: z.number().nullable(),
 });
 
+export const QUERY_INTENTS = ["search", "count", "list"] as const;
+export type QueryIntent = (typeof QUERY_INTENTS)[number];
+
 /** OpenAI structured output: no `.optional()` — use `.nullable()` instead. */
 export const parsedQueryStructuredSchema = z.object({
+  intent: z.enum(QUERY_INTENTS).nullable(),
   semanticQuery: z.string(),
   keywordQuery: z.string(),
   filters: parsedQueryFiltersSchema.nullable(),
 });
 
 export type ParsedQuery = {
+  intent: QueryIntent;
   semanticQuery: string;
   keywordQuery: string;
   filters?: QueryFilters;
@@ -138,6 +143,7 @@ export function normalizeStructuredParsedQuery(
   raw: z.infer<typeof parsedQueryStructuredSchema>,
 ): ParsedQuery {
   const result: ParsedQuery = {
+    intent: raw.intent ?? "search",
     semanticQuery: raw.semanticQuery,
     keywordQuery: raw.keywordQuery,
   };
